@@ -44,6 +44,7 @@ export interface Skill {
   proficiency: number; // 1-5
   source: 'Assessment' | 'Project Evidence' | 'Resume' | 'Inferred';
   lastValidatedDate: string;
+  demandTrend?: 'increasing' | 'decreasing' | 'flat'; // Demand trend for the skill
 }
 
 // Employee Skills (many-to-many relationship)

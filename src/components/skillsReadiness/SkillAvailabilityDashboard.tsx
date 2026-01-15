@@ -4,12 +4,62 @@ import { createPortal } from 'react-dom';
 import type { EmployeeProfile } from '../../data/workforceReadinessSchema';
 import { getEmployeeTasks } from '../../data/taskData';
 
+// Trend Indicator Component
+const TrendIndicator: React.FC<{ trend: 'increasing' | 'decreasing' | 'flat' }> = ({ trend }) => {
+  const trendConfig = {
+    increasing: {
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      ),
+      color: 'text-green-600',
+      title: 'Demand Increasing'
+    },
+    decreasing: {
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+        </svg>
+      ),
+      color: 'text-red-600',
+      title: 'Demand Decreasing'
+    },
+    flat: {
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
+        </svg>
+      ),
+      color: 'text-gray-600',
+      title: 'Demand Stable'
+    }
+  };
+
+  const config = trendConfig[trend];
+
+  return (
+    <span className={`inline-flex items-center ${config.color}`} title={config.title}>
+      {config.icon}
+    </span>
+  );
+};
+
 // Custom tooltip components
 const CustomBarTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    // Find the skill data to get trend
+    const skillData = payload[0]?.payload;
+    const demandTrend = skillData?.demandTrend;
+    
     return (
       <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-        <p className="font-semibold text-gray-900 mb-2">{label}</p>
+        <p className="font-semibold text-gray-900 mb-2 flex items-center space-x-2">
+          <span>{label}</span>
+          {demandTrend && (
+            <TrendIndicator trend={demandTrend} />
+          )}
+        </p>
         {payload.map((entry: any, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
             {entry.name}: <span className="font-medium">{entry.value}{entry.dataKey === 'employeeCount' ? ' employees' : entry.dataKey === 'uniqueSkills' ? ' skills' : ''}</span>
@@ -98,13 +148,16 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
 
     return Array.from(skillMap.entries())
       .map(([skillId, data]) => {
-        const skillName = data.employees[0]?.skills.find(s => s.skillId === skillId)?.skillName || skillId;
+        const skill = data.employees[0]?.skills.find(s => s.skillId === skillId);
+        const skillName = skill?.skillName || skillId;
+        const demandTrend = skill?.demandTrend || 'flat';
         return {
           skillId,
           skillName,
           employeeCount: data.count,
           averageProficiency: Math.round((data.totalProficiency / data.count) * 10) / 10,
           employees: data.employees,
+          demandTrend,
         };
       })
       .sort((a, b) => b.employeeCount - a.employeeCount);
@@ -277,7 +330,14 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
                   .sort((a, b) => b.proficiency - a.proficiency)
                   .map((skill, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{skill.skillName}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        <div className="flex items-center space-x-2">
+                          <span>{skill.skillName}</span>
+                          {skill.demandTrend && (
+                            <TrendIndicator trend={skill.demandTrend} />
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           skill.proficiency >= 4 ? 'bg-green-100 text-green-800' :
@@ -463,10 +523,16 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
       };
     }).sort((a, b) => b.proficiency - a.proficiency);
 
+    const skillData = skill.employees[0]?.skills.find(s => s.skillId === skill.skillId);
+    const demandTrend = skillData?.demandTrend || 'flat';
+
     return (
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Skill Details: {skill.skillName}
+          <div className="flex items-center space-x-2">
+            <span>Skill Details: {skill.skillName}</span>
+            <TrendIndicator trend={demandTrend} />
+          </div>
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -810,7 +876,14 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {skillStats.map((skill) => (
                 <tr key={skill.skillId} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{skill.skillName}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <div className="flex items-center space-x-2">
+                      <span>{skill.skillName}</span>
+                      {skill.demandTrend && (
+                        <TrendIndicator trend={skill.demandTrend} />
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{skill.employeeCount}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{skill.averageProficiency}/5</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
