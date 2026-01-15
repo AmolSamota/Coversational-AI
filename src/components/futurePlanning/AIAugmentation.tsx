@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Breadcrumbs from '../skillsReadiness/Breadcrumbs';
 import { employeeProfiles, getAllRoles, EMPLOYEE_COUNT } from '../../data/workforceReadinessData';
 import Modal from '../Modal';
@@ -680,20 +681,23 @@ const AIAugmentation: React.FC = () => {
         taskMap.set(task.taskName, existing);
       });
       
+      // Calculate total hours for the role first (sum of all task hours)
+      const totalHours = data.tasks.reduce((sum, t) => sum + t.hoursPerWeek, 0);
+      
       // Convert to array, calculate averages, and get top 5 by total hours (for display)
+      // Percentage should be: (task hours / total role hours) * 100
+      // This ensures percentages sum to 100% (or close to it, accounting for rounding)
       const allTasks = Array.from(taskMap.entries())
         .map(([taskName, data]) => ({
           name: taskName,
           hours: data.hours,
-          percentage: (data.hours / (data.count * 40)) * 100, // Average % of time per employee spent on this task (out of 40 hours/week)
+          percentage: totalHours > 0 ? (data.hours / totalHours) * 100 : 0, // % of total role hours spent on this task
           automationScore: Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length),
           aiCapability: data.capability,
         }))
         .sort((a, b) => b.hours - a.hours);
       
       const topTasks = allTasks.slice(0, 5); // Top 5 for display in Current State Dashboard
-
-      const totalHours = data.tasks.reduce((sum, t) => sum + t.hoursPerWeek, 0);
       const automatableHours = data.tasks
         .filter(t => t.automationScore > 60)
         .reduce((sum, t) => sum + t.hoursPerWeek, 0);
@@ -1521,8 +1525,79 @@ const AIAugmentation: React.FC = () => {
       percentage: (r.headcount / totalHeadcount) * 100,
     }));
 
-    return { totalHeadcount, totalCost, roleDistribution };
+    // Calculate total automatable hours per week across all roles
+    const totalAutomatableHoursPerWeek = currentState.reduce((sum, role) => {
+      return sum + (role.automatableHours || 0);
+    }, 0);
+
+    return { totalHeadcount, totalCost, roleDistribution, totalAutomatableHoursPerWeek };
   }, [filteredProfiles, currentState]);
+
+  // Average Automation Score by Business Unit
+  const automationByBusinessUnit = useMemo(() => {
+    const buMap = new Map<string, { totalScore: number; taskCount: number }>();
+    
+    filteredProfiles.forEach(profile => {
+      const businessUnit = profile.employee.businessUnit;
+      if (!buMap.has(businessUnit)) {
+        buMap.set(businessUnit, { totalScore: 0, taskCount: 0 });
+      }
+    });
+
+    // Calculate average automation score for each business unit based on tasks
+    filteredTasks.forEach(task => {
+      const profile = filteredProfiles.find(p => p.employee.currentRoleId === task.roleId);
+      if (profile) {
+        const businessUnit = profile.employee.businessUnit;
+        const existing = buMap.get(businessUnit);
+        if (existing) {
+          existing.totalScore += task.automationScore;
+          existing.taskCount += 1;
+        }
+      }
+    });
+
+    return Array.from(buMap.entries())
+      .map(([businessUnit, data]) => ({
+        businessUnit,
+        averageScore: data.taskCount > 0 ? Math.round((data.totalScore / data.taskCount) * 10) / 10 : 0,
+      }))
+      .filter(item => item.averageScore > 0)
+      .sort((a, b) => b.averageScore - a.averageScore);
+  }, [filteredProfiles, filteredTasks]);
+
+  // Average Automation Score by Location
+  const automationByLocation = useMemo(() => {
+    const locationMap = new Map<string, { totalScore: number; taskCount: number }>();
+    
+    filteredProfiles.forEach(profile => {
+      const location = profile.employee.location;
+      if (!locationMap.has(location)) {
+        locationMap.set(location, { totalScore: 0, taskCount: 0 });
+      }
+    });
+
+    // Calculate average automation score for each location based on tasks
+    filteredTasks.forEach(task => {
+      const profile = filteredProfiles.find(p => p.employee.currentRoleId === task.roleId);
+      if (profile) {
+        const location = profile.employee.location;
+        const existing = locationMap.get(location);
+        if (existing) {
+          existing.totalScore += task.automationScore;
+          existing.taskCount += 1;
+        }
+      }
+    });
+
+    return Array.from(locationMap.entries())
+      .map(([location, data]) => ({
+        location,
+        averageScore: data.taskCount > 0 ? Math.round((data.totalScore / data.taskCount) * 10) / 10 : 0,
+      }))
+      .filter(item => item.averageScore > 0)
+      .sort((a, b) => b.averageScore - a.averageScore);
+  }, [filteredProfiles, filteredTasks]);
 
   // Recalculate impact results from editable data (for modify mode)
   const recalculatedImpactResults = useMemo(() => {
@@ -2230,7 +2305,7 @@ const AIAugmentation: React.FC = () => {
                   {/* Workforce Summary */}
                   <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Workforce Summary</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div>
                         <div className="text-sm text-gray-600">Total Headcount</div>
                         <div className="text-2xl font-bold text-gray-900">{workforceSummary.totalHeadcount}</div>
@@ -2245,6 +2320,87 @@ const AIAugmentation: React.FC = () => {
                         <div className="text-sm text-gray-600">Unique Roles</div>
                         <div className="text-2xl font-bold text-gray-900">{workforceSummary.roleDistribution.length}</div>
                       </div>
+                      <div>
+                        <div className="text-sm text-gray-600">Automatable Hours</div>
+                        <div className="text-2xl font-bold text-gray-900">
+                          {workforceSummary.totalAutomatableHoursPerWeek.toFixed(0)} hrs/week
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Automation Score Dashboards */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Average Automation Score by Business Unit */}
+                    <div className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Automation Score by Business Unit</h3>
+                      {automationByBusinessUnit.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={automationByBusinessUnit}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="businessUnit" 
+                              angle={-45} 
+                              textAnchor="end" 
+                              height={100}
+                              tick={{ fontSize: 12 }}
+                            />
+                            <YAxis 
+                              domain={[0, 100]}
+                              label={{ value: 'Automation Score', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip 
+                              formatter={(value: number) => [`${value.toFixed(1)}`, 'Average Score']}
+                              labelFormatter={(label) => `Business Unit: ${label}`}
+                            />
+                            <Legend />
+                            <Bar 
+                              dataKey="averageScore" 
+                              fill="#3b82f6" 
+                              name="Average Automation Score"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="text-gray-500 text-center py-8">No data available</div>
+                      )}
+                    </div>
+
+                    {/* Average Automation Score by Location */}
+                    <div className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Automation Score by Location</h3>
+                      {automationByLocation.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={automationByLocation}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="location" 
+                              angle={-45} 
+                              textAnchor="end" 
+                              height={100}
+                              tick={{ fontSize: 12 }}
+                            />
+                            <YAxis 
+                              domain={[0, 100]}
+                              label={{ value: 'Automation Score', angle: -90, position: 'insideLeft' }}
+                            />
+                            <Tooltip 
+                              formatter={(value: number) => [`${value.toFixed(1)}`, 'Average Score']}
+                              labelFormatter={(label) => `Location: ${label}`}
+                            />
+                            <Legend />
+                            <Bar 
+                              dataKey="averageScore" 
+                              fill="#10b981" 
+                              name="Average Automation Score"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="text-gray-500 text-center py-8">No data available</div>
+                      )}
                     </div>
                   </div>
 
@@ -2366,10 +2522,10 @@ const AIAugmentation: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {role.topTasks.map((task, tIdx) => (
-                          <div key={tIdx} className="flex items-center gap-2">
-                            <span className="relative group cursor-help" title={`${task.name} - ${task.hours} hours/week (${task.percentage.toFixed(0)}% of role time)`}>
+                          <div key={tIdx} className="flex items-center gap-2 flex-wrap">
+                            <span className="relative group cursor-help flex-shrink-0" title={`${task.name} - ${task.hours} hours/week (${task.percentage.toFixed(0)}% of role time)`}>
                               {task.name}
                               <div className="absolute bottom-full left-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                                 <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow-lg">
@@ -2378,9 +2534,9 @@ const AIAugmentation: React.FC = () => {
                                 <div className="absolute top-full left-0 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                               </div>
                             </span>
-                            <span className="text-xs text-gray-500">({task.percentage.toFixed(0)}%)</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">({task.percentage.toFixed(0)}%)</span>
                             <span 
-                              className={`text-xs px-1.5 py-0.5 rounded relative group cursor-help ${
+                              className={`text-xs px-1.5 py-0.5 rounded relative group cursor-help flex-shrink-0 ${
                                 task.automationScore > 60 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                               }`}
                               title={`Automation Score: ${task.automationScore}/100`}
@@ -2394,7 +2550,7 @@ const AIAugmentation: React.FC = () => {
                               </div>
                             </span>
                             <span 
-                              className="text-xs text-blue-600 relative group cursor-help" 
+                              className="text-xs text-blue-600 relative group cursor-help flex-shrink-0" 
                               title={`AI Capability: ${task.aiCapability}`}
                             >
                               {task.aiCapability}
