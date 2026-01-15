@@ -26,7 +26,7 @@ body {
   from {
     opacity: 0;
     transform: translateY(10px);
-  }
+}
   to {
     opacity: 1;
     transform: translateY(0);
@@ -143,7 +143,7 @@ body {
 .chart-wrapper {
   min-width: 500px;
   max-width: 100%;
-}
+  }
 
 /* Data callout cards */
 .metrics-grid {

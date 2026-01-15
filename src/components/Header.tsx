@@ -192,6 +192,16 @@ const Header: React.FC = () => {
               >
                 Insights
               </Link>
+              <Link
+                to="/readiness"
+                className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive('/readiness')
+                    ? 'text-gray-900 border-b-2 border-blue-600'
+                    : 'text-nav-gray hover:text-gray-900'
+                }`}
+              >
+                Readiness
+              </Link>
             </div>
           </div>
 
