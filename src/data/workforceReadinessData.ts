@@ -761,12 +761,19 @@ function parseCSV(csv: string): EmployeeProfile[] {
       const skillId = row[`skill_${j}_id`];
       const skillName = row[`skill_${j}_name`];
       if (skillId && skillName) {
+        // Generate demand trend for skill (deterministic based on skill name)
+        const trendSeed = skillName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const trendValue = trendSeed % 3;
+        const demandTrend: 'increasing' | 'decreasing' | 'flat' = 
+          trendValue === 0 ? 'increasing' : trendValue === 1 ? 'decreasing' : 'flat';
+        
         skills.push({
           skillId,
           skillName,
           proficiency: parseInt(row[`skill_${j}_proficiency_1to5`], 10),
           source: row[`skill_${j}_source`] as Skill['source'],
           lastValidatedDate: row[`skill_${j}_last_validated_date`],
+          demandTrend,
         });
       }
     }

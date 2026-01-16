@@ -26,6 +26,14 @@ const Modal: React.FC<ModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Convert size strings to CSS values (40% of default 90vw = 36vw)
+  const getMaxWidth = (): string => {
+    if (maxWidth === 'sm') return '36vw';
+    if (maxWidth === 'md') return '36vw';
+    if (maxWidth === 'lg') return '36vw';
+    return maxWidth;
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -38,18 +46,35 @@ const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Focus trap
+    // Focus trap - only for Tab navigation, not for regular typing
     const focusableElements = modalRef.current?.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
     const firstElement = focusableElements?.[0] as HTMLElement;
     const lastElement = focusableElements?.[focusableElements.length - 1] as HTMLElement;
 
-    firstElement?.focus();
+    // Only auto-focus first element if no input is already focused
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA');
+    if (!isInputFocused && firstElement) {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        firstElement.focus();
+      }, 0);
+    }
 
     const handleTab = (e: KeyboardEvent) => {
+      // Only handle Tab key, ignore all other keys
       if (e.key !== 'Tab') return;
+      
+      // Don't interfere if user is typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        // Allow normal Tab behavior within inputs
+        return;
+      }
 
+      // Only trap Tab navigation between focusable elements
       if (e.shiftKey) {
         if (document.activeElement === firstElement) {
           e.preventDefault();
@@ -92,7 +117,7 @@ const Modal: React.FC<ModalProps> = ({
         ref={modalRef}
         className="bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col animate-scaleIn h-[90vh] max-h-[90vh] md:h-auto"
         style={{ 
-          maxWidth: isMobile ? '95vw' : maxWidth,
+          maxWidth: isMobile ? '95vw' : getMaxWidth(),
           maxHeight: isMobile ? '90vh' : maxHeight
         }}
         onClick={(e) => e.stopPropagation()}

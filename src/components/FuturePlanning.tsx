@@ -156,6 +156,7 @@ const FuturePlanning: React.FC = () => {
         isOpen={showComingSoon}
         onClose={() => setShowComingSoon(false)}
         title={comingSoonTitle}
+        maxWidth="36vw"
       >
         <div className="text-center py-6">
           <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
