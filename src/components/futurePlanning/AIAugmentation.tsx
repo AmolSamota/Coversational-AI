@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Breadcrumbs from '../skillsReadiness/Breadcrumbs';
 import { employeeProfiles, getAllRoles, EMPLOYEE_COUNT } from '../../data/workforceReadinessData';
+import { getEmployeeTasks } from '../../data/taskData';
 import Modal from '../Modal';
 import type { EmployeeProfile } from '../../data/workforceReadinessSchema';
 import SimulationTabs, { type SimulationTab } from './SimulationTabs';
@@ -500,6 +501,15 @@ const AIAugmentation: React.FC = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<SimulationTab>('overview');
   
+  // Drill-down state for Current State Dashboard
+  type DashboardView = 'overview' | 'role' | 'employee';
+  interface DrillDownState {
+    view: DashboardView;
+    selectedRole?: string;
+    selectedEmployee?: string;
+  }
+  const [drillDown, setDrillDown] = useState<DrillDownState>({ view: 'overview' });
+  
   // Plan management state
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -591,6 +601,19 @@ const AIAugmentation: React.FC = () => {
   const [implementationTimeline, setImplementationTimeline] = useState<'immediate' | 'phased'>('phased');
   const [strategy, setStrategy] = useState<'capacity' | 'cost' | 'balanced'>('capacity');
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
+
+  // Drill-down handlers
+  const handleDrillDown = (type: 'role' | 'employee', id: string) => {
+    if (type === 'role') {
+      setDrillDown({ view: 'role', selectedRole: id });
+    } else if (type === 'employee') {
+      setDrillDown(prev => ({ 
+        view: 'employee', 
+        selectedEmployee: id,
+        selectedRole: prev.view === 'role' ? prev.selectedRole : undefined
+      }));
+    }
+  };
 
   // Generate task data
   const allTasks = useMemo(() => generateTaskData(employeeProfiles), []);
@@ -1813,11 +1836,55 @@ const AIAugmentation: React.FC = () => {
     }
   }, [selectedPlanId, activeTab]);
 
-  const breadcrumbItems = [
+  // Top-level breadcrumb items (always shown at the top)
+  const topLevelBreadcrumbItems = [
     { label: 'Readiness', onClick: () => navigate('/readiness') },
     { label: 'Future Planning', onClick: () => navigate('/readiness/future-planning') },
     { label: 'AI Augmentation' },
   ];
+
+  // Drill-down breadcrumb items (shown above Current State Dashboard when drilling down)
+  const drillDownBreadcrumbItems = useMemo(() => {
+    const items: Array<{ label: string; onClick?: () => void }> = [
+      { 
+        label: 'Current State Dashboard',
+        onClick: drillDown.view !== 'overview' ? () => setDrillDown({ view: 'overview' }) : undefined
+      },
+    ];
+    
+    // Add role level
+    if (drillDown.view === 'role' && drillDown.selectedRole) {
+      const role = currentState.find(r => r.roleId === drillDown.selectedRole);
+      if (role) {
+        items.push({ 
+          label: role.roleName,
+          onClick: () => setDrillDown({ view: 'overview' })
+        });
+      }
+    }
+    
+    // Add employee level
+    if (drillDown.view === 'employee' && drillDown.selectedEmployee) {
+      // If we came from a role, add role breadcrumb first
+      if (drillDown.selectedRole) {
+        const role = currentState.find(r => r.roleId === drillDown.selectedRole);
+        if (role) {
+          items.push({ 
+            label: role.roleName,
+            onClick: () => setDrillDown({ view: 'role', selectedRole: drillDown.selectedRole })
+          });
+        }
+      }
+      items.push({ 
+        label: drillDown.selectedEmployee,
+        onClick: drillDown.selectedRole 
+          ? () => setDrillDown({ view: 'role', selectedRole: drillDown.selectedRole })
+          : () => setDrillDown({ view: 'overview' })
+      });
+    }
+    
+    return items;
+  }, [drillDown, currentState]);
   
   // Save draft handler
   const handleSaveDraft = () => {
@@ -2211,7 +2278,8 @@ const AIAugmentation: React.FC = () => {
         content={tooltipState.content}
       />
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Breadcrumbs items={breadcrumbItems} />
+        {/* Top-level breadcrumbs (always shown) */}
+        <Breadcrumbs items={topLevelBreadcrumbItems} />
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Augmentation Simulation</h1>
         <p className="text-gray-600 mb-6">
@@ -2458,7 +2526,182 @@ const AIAugmentation: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Current State Dashboard */}
+                  {/* Drill-down Breadcrumb Navigation - Just above Current State Dashboard */}
+                  {drillDown.view !== 'overview' && (
+                    <div className="mb-4">
+                      <Breadcrumbs items={drillDownBreadcrumbItems} />
+                    </div>
+                  )}
+                  
+                  {/* Current State Dashboard - Conditional Rendering for Drill-down */}
+                  {drillDown.view === 'role' && drillDown.selectedRole ? (() => {
+                    const role = currentState.find(r => r.roleId === drillDown.selectedRole);
+                    if (!role) return null;
+                    
+                    // Get all employees in this role
+                    const roleEmployees = filteredProfiles.filter(p => p.employee.currentRoleId === drillDown.selectedRole);
+                    
+                    return (
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Role Details: {role.roleName}</h2>
+                        
+                        {/* Role Metrics */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                          <div className="bg-blue-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Headcount</div>
+                            <div className="text-3xl font-bold text-blue-600">{role.headcount}</div>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Annual Cost</div>
+                            <div className="text-3xl font-bold text-green-600">${(role.annualCost / 1000000).toFixed(2)}M</div>
+                          </div>
+                          <div className="bg-purple-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Total Hours/Week</div>
+                            <div className="text-3xl font-bold text-purple-600">{role.totalHours.toFixed(0)}</div>
+                          </div>
+                          <div className="bg-orange-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Automatable Hours/Week</div>
+                            <div className="text-3xl font-bold text-orange-600">{role.automatableHours.toFixed(0)}</div>
+                          </div>
+                        </div>
+                        
+                        {/* Employees in this Role */}
+                        <div className="mt-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Employees in this Role ({roleEmployees.length})</h3>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business Unit</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Engagement</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Annual Cost</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {roleEmployees.map((emp) => (
+                                  <tr 
+                                    key={emp.employee.employeeId}
+                                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                    onClick={() => handleDrillDown('employee', emp.employee.employeeName)}
+                                  >
+                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{emp.employee.employeeName}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{emp.employee.location}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{emp.employee.businessUnit}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{emp.performance?.performanceRating || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{emp.performance?.engagementScore || 0}/100</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">${((emp.cost?.totalCompensation || 0) / 1000000).toFixed(2)}M</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })() : drillDown.view === 'employee' && drillDown.selectedEmployee ? (() => {
+                    const employee = filteredProfiles.find(p => p.employee.employeeName === drillDown.selectedEmployee);
+                    if (!employee) return null;
+                    
+                    // Get employee tasks
+                    const employeeTasks = getEmployeeTasks(employee.employee.employeeId);
+                    const topTasks = employeeTasks
+                      .sort((a, b) => b.hoursPerWeek - a.hoursPerWeek)
+                      .slice(0, 5);
+                    
+                    return (
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                          Employee Details: {employee.employee.employeeName}
+                        </h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                          <div className="bg-blue-50 rounded-lg p-4 relative group">
+                            <div className="text-sm text-gray-600">Role</div>
+                            <div className="text-lg font-bold text-blue-600">{employee.employee.currentRoleName}</div>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-4 relative group">
+                            <div className="text-sm text-gray-600">Location</div>
+                            <div className="text-lg font-bold text-green-600">{employee.employee.location}</div>
+                          </div>
+                          <div className="bg-purple-50 rounded-lg p-4 relative group">
+                            <div className="text-sm text-gray-600">Business Unit</div>
+                            <div className="text-lg font-bold text-purple-600">{employee.employee.businessUnit}</div>
+                          </div>
+                          <div className="bg-orange-50 rounded-lg p-4 relative group">
+                            <div className="text-sm text-gray-600">Annual Cost</div>
+                            <div className="text-lg font-bold text-orange-600">${((employee.cost?.totalCompensation || 0) / 1000000).toFixed(2)}M</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                          <div className="bg-blue-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Performance Rating</div>
+                            <div className="text-2xl font-bold text-blue-600">{employee.performance?.performanceRating || 'N/A'}</div>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Engagement Score</div>
+                            <div className="text-2xl font-bold text-green-600">{employee.performance?.engagementScore || 0}/100</div>
+                          </div>
+                          <div className="bg-purple-50 rounded-lg p-4">
+                            <div className="text-sm text-gray-600">Readiness Score</div>
+                            <div className="text-2xl font-bold text-purple-600">{employee.readiness?.readinessScore || 0}/100</div>
+                          </div>
+                        </div>
+
+                        {/* Top Tasks Section */}
+                        {topTasks.length > 0 && (
+                          <div className="mt-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Tasks</h3>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours/Week</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Automation Score</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AI Capability</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {topTasks.map((task) => (
+                                    <tr key={task.taskId} className="hover:bg-gray-50">
+                                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{task.taskName}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-600">{task.hoursPerWeek} hrs</td>
+                                      <td className="px-4 py-3 text-sm">
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                          task.automationScore >= 70 ? 'bg-green-100 text-green-800' :
+                                          task.automationScore >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-red-100 text-red-800'
+                                        }`}>
+                                          {task.automationScore}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm">
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                          task.aiCapabilityMatch === 'GenAI' ? 'bg-blue-100 text-blue-800' :
+                                          task.aiCapabilityMatch === 'RPA' ? 'bg-purple-100 text-purple-800' :
+                                          task.aiCapabilityMatch === 'ML' ? 'bg-indigo-100 text-indigo-800' :
+                                          'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {task.aiCapabilityMatch}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : null}
+                  
+                  {/* Current State Dashboard - Default View */}
+                  {drillDown.view === 'overview' && (
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Current State Dashboard</h2>
           
@@ -2551,7 +2794,11 @@ const AIAugmentation: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentState.map((role, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
+                  <tr 
+                    key={idx} 
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleDrillDown('role', role.roleId)}
+                  >
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{role.roleName}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       <span className="relative group cursor-help" title={`${role.headcount} employees in this role`}>
@@ -2652,6 +2899,7 @@ const AIAugmentation: React.FC = () => {
             </table>
           </div>
                   </div>
+                  )}
                   
                   {/* Calculation Tooltip for Overview Tab */}
                   <CalculationTooltip
