@@ -2333,7 +2333,34 @@ const AIAugmentation: React.FC = () => {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     {/* Average Automation Score by Business Unit */}
                     <div className="bg-white rounded-lg shadow-sm p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Automation Score by Business Unit</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                        <span>Average Automation Score by Business Unit</span>
+                        <span 
+                          className="relative group cursor-help inline-flex items-center"
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setTooltipState({
+                              visible: true,
+                              position: { top: rect.top - 10, left: rect.left },
+                              content: (
+                                <>
+                                  <div className="font-semibold mb-1">Automation Score:</div>
+                                  <div>Measures the potential for AI/automation on a scale of 0-100</div>
+                                  <div className="mt-2 text-xs">• 0-40: Low automation potential</div>
+                                  <div className="text-xs">• 41-60: Moderate automation potential</div>
+                                  <div className="text-xs">• 61-100: High automation potential (automatable)</div>
+                                  <div className="mt-2 text-xs">This chart shows the average automation score across all tasks for each business unit, weighted by task frequency.</div>
+                                </>
+                              ),
+                            });
+                          }}
+                          onMouseLeave={() => setTooltipState({ visible: false, position: { top: 0, left: 0 }, content: null })}
+                        >
+                          <svg className="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </span>
+                      </h3>
                       {automationByBusinessUnit.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
                           <BarChart data={automationByBusinessUnit}>
@@ -2369,7 +2396,34 @@ const AIAugmentation: React.FC = () => {
 
                     {/* Average Automation Score by Location */}
                     <div className="bg-white rounded-lg shadow-sm p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Automation Score by Location</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                        <span>Average Automation Score by Location</span>
+                        <span 
+                          className="relative group cursor-help inline-flex items-center"
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setTooltipState({
+                              visible: true,
+                              position: { top: rect.top - 10, left: rect.left },
+                              content: (
+                                <>
+                                  <div className="font-semibold mb-1">Automation Score:</div>
+                                  <div>Measures the potential for AI/automation on a scale of 0-100</div>
+                                  <div className="mt-2 text-xs">• 0-40: Low automation potential</div>
+                                  <div className="text-xs">• 41-60: Moderate automation potential</div>
+                                  <div className="text-xs">• 61-100: High automation potential (automatable)</div>
+                                  <div className="mt-2 text-xs">This chart shows the average automation score across all tasks for each location, weighted by task frequency.</div>
+                                </>
+                              ),
+                            });
+                          }}
+                          onMouseLeave={() => setTooltipState({ visible: false, position: { top: 0, left: 0 }, content: null })}
+                        >
+                          <svg className="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </span>
+                      </h3>
                       {automationByLocation.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
                           <BarChart data={automationByLocation}>
@@ -2598,6 +2652,13 @@ const AIAugmentation: React.FC = () => {
             </table>
           </div>
                   </div>
+                  
+                  {/* Calculation Tooltip for Overview Tab */}
+                  <CalculationTooltip
+                    isVisible={tooltipState.visible}
+                    position={tooltipState.position}
+                    content={tooltipState.content}
+                  />
                 </>
               ) : activeTab === 'scenario' ? (
                 <>
@@ -4986,7 +5047,7 @@ const AIAugmentation: React.FC = () => {
         isOpen={publishConfirmModal.isOpen}
         onClose={() => setPublishConfirmModal({ isOpen: false })}
         title="Publish Plan"
-        maxWidth="md"
+        maxWidth="36vw"
         footer={
           <div className="flex items-center justify-end space-x-3">
             <button
@@ -5043,7 +5104,7 @@ const AIAugmentation: React.FC = () => {
         isOpen={publishProgressModal.isOpen}
         onClose={publishProgressModal.isComplete ? () => setPublishProgressModal({ ...publishProgressModal, isOpen: false }) : handlePublishCancel}
         title={publishProgressModal.isComplete ? "Plan Published Successfully" : "Publishing Plan..."}
-        maxWidth="md"
+        maxWidth="36vw"
         footer={
           publishProgressModal.isComplete ? (
             <button
@@ -5170,7 +5231,7 @@ const AIAugmentation: React.FC = () => {
           setDraftPlanNameInput('');
         }}
         title="Save Plan as Draft"
-        maxWidth="md"
+        maxWidth="36vw"
       >
         <div className="space-y-4">
           <div>
@@ -5524,7 +5585,7 @@ const AIAugmentation: React.FC = () => {
         isOpen={showPdfComingSoonModal}
         onClose={() => setShowPdfComingSoonModal(false)}
         title="Download"
-        maxWidth="sm"
+        maxWidth="36vw"
       >
         <div className="flex flex-col items-center justify-center p-6 text-center">
           <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

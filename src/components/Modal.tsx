@@ -26,6 +26,14 @@ const Modal: React.FC<ModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Convert size strings to CSS values (40% of default 90vw = 36vw)
+  const getMaxWidth = (): string => {
+    if (maxWidth === 'sm') return '36vw';
+    if (maxWidth === 'md') return '36vw';
+    if (maxWidth === 'lg') return '36vw';
+    return maxWidth;
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -109,7 +117,7 @@ const Modal: React.FC<ModalProps> = ({
         ref={modalRef}
         className="bg-white rounded-xl shadow-2xl w-full overflow-hidden flex flex-col animate-scaleIn h-[90vh] max-h-[90vh] md:h-auto"
         style={{ 
-          maxWidth: isMobile ? '95vw' : maxWidth,
+          maxWidth: isMobile ? '95vw' : getMaxWidth(),
           maxHeight: isMobile ? '90vh' : maxHeight
         }}
         onClick={(e) => e.stopPropagation()}
