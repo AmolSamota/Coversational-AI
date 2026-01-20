@@ -250,6 +250,19 @@ const RedeploymentDashboard: React.FC<RedeploymentDashboardProps> = ({ profiles,
         {/* Redeployment by Department */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Redeployment Readiness by Department</h3>
+          {(() => {
+            const avgScore = redeploymentByDept.length > 0
+              ? Math.round(redeploymentByDept.reduce((sum, d) => sum + d.averageScore, 0) / redeploymentByDept.length)
+              : 0;
+            const insight = avgScore >= 60
+              ? `Strong overall readiness - average score of ${avgScore}/100 indicates good internal mobility potential across departments.`
+              : `Moderate readiness levels - average ${avgScore}/100 suggests targeted development needed to improve redeployment capabilities.`;
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-blue-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={redeploymentByDept}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -265,6 +278,19 @@ const RedeploymentDashboard: React.FC<RedeploymentDashboardProps> = ({ profiles,
         {/* Readiness Distribution */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Readiness Score Distribution</h3>
+          {(() => {
+            const highReadiness = readinessDistribution.filter(d => d.label.includes('61') || d.label.includes('81')).reduce((sum, d) => sum + d.count, 0);
+            const total = readinessDistribution.reduce((sum, d) => sum + d.count, 0);
+            const highPercent = total > 0 ? Math.round((highReadiness / total) * 100) : 0;
+            const insight = highPercent >= 30
+              ? `${highPercent}% of employees show high readiness (61-100), indicating a strong pool for quick redeployment.`
+              : `Only ${highPercent}% have high readiness - focus on developing transferable skills to expand redeployment pool.`;
+            return (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-green-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={readinessDistribution}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -280,6 +306,24 @@ const RedeploymentDashboard: React.FC<RedeploymentDashboardProps> = ({ profiles,
       {/* Time to Redeploy by Role */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Time to Redeploy by Role</h3>
+        {(() => {
+          const avgDays = timeToRedeployByRole.length > 0
+            ? Math.round(timeToRedeployByRole.reduce((sum, r) => sum + r.averageDays, 0) / timeToRedeployByRole.length)
+            : 0;
+          const fastestRole = timeToRedeployByRole.length > 0 
+            ? timeToRedeployByRole.reduce((min, r) => r.averageDays < min.averageDays ? r : min, timeToRedeployByRole[0])
+            : null;
+          const insight = avgDays <= 30
+            ? `Fast redeployment capability - average ${avgDays} days suggests efficient internal mobility processes.`
+            : fastestRole && fastestRole.averageDays < avgDays * 0.7
+              ? `${fastestRole.role} shows fastest redeployment at ${fastestRole.averageDays} days - consider as a model for other roles.`
+              : `Average ${avgDays} days to redeploy indicates moderate transition time - streamline processes to accelerate mobility.`;
+          return (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-orange-800">{insight}</p>
+            </div>
+          );
+        })()}
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={timeToRedeployByRole}>
             <CartesianGrid strokeDasharray="3 3" />

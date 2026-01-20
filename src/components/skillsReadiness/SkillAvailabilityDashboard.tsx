@@ -721,6 +721,19 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
         {/* Top Skills by Availability */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Skills by Availability</h3>
+          {(() => {
+            const maxCount = topSkills.length > 0 ? Math.max(...topSkills.map(s => s.employeeCount)) : 0;
+            const minCount = topSkills.length > 0 ? Math.min(...topSkills.map(s => s.employeeCount)) : 0;
+            const variance = maxCount > 0 ? Math.round((maxCount - minCount) / maxCount * 100) : 0;
+            const insight = variance > 50 
+              ? `High variance in skill distribution - top skills have ${variance}% more coverage than others, indicating potential skill concentration risks.`
+              : `Balanced skill distribution across top skills suggests good talent diversification and reduced dependency on specific competencies.`;
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-blue-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topSkills}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -747,6 +760,22 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
         {/* Proficiency Distribution */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Proficiency Distribution</h3>
+          {(() => {
+            const total = proficiencyDistribution.reduce((sum, d) => sum + d.count, 0);
+            const highProficiency = proficiencyDistribution.filter(d => {
+              const levelStr = String(d.level);
+              return levelStr.includes('4') || levelStr.includes('5');
+            }).reduce((sum, d) => sum + d.count, 0);
+            const highPercent = total > 0 ? Math.round((highProficiency / total) * 100) : 0;
+            const insight = highPercent >= 40
+              ? `Strong proficiency levels - ${highPercent}% of skills are at advanced/expert level, indicating a mature and capable workforce.`
+              : `Focus on upskilling needed - only ${highPercent}% of skills are at advanced levels, suggesting development opportunities.`;
+            return (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-purple-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -772,6 +801,22 @@ const SkillAvailabilityDashboard: React.FC<SkillAvailabilityDashboardProps> = ({
       {/* Skill Coverage by Department */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Skill Coverage by Department</h3>
+        {(() => {
+          const avgSkills = skillCoverageByDept.length > 0 
+            ? Math.round(skillCoverageByDept.reduce((sum, d) => sum + d.uniqueSkills, 0) / skillCoverageByDept.length)
+            : 0;
+          const maxDept = skillCoverageByDept.length > 0 
+            ? skillCoverageByDept.reduce((max, d) => d.uniqueSkills > max.uniqueSkills ? d : max, skillCoverageByDept[0])
+            : null;
+          const insight = maxDept && maxDept.uniqueSkills > avgSkills * 1.5
+            ? `${maxDept.department} shows ${maxDept.uniqueSkills - avgSkills} more unique skills than average, indicating strong capability diversity.`
+            : `Departments show relatively balanced skill coverage with an average of ${avgSkills} unique skills per department.`;
+          return (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-green-800">{insight}</p>
+            </div>
+          );
+        })()}
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={skillCoverageByDept}>
             <CartesianGrid strokeDasharray="3 3" />

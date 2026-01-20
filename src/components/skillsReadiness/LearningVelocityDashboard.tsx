@@ -313,6 +313,22 @@ const LearningVelocityDashboard: React.FC<LearningVelocityDashboardProps> = ({ p
         {/* Learning by Department */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Velocity by Department</h3>
+          {(() => {
+            const avgVelocity = learningByDept.length > 0
+              ? Math.round(learningByDept.reduce((sum, d) => sum + d.averageVelocity, 0) / learningByDept.length)
+              : 0;
+            const topDept = learningByDept.length > 0 ? learningByDept[0] : null;
+            const insight = avgVelocity >= 60
+              ? `Strong learning culture - average velocity of ${avgVelocity}/100 indicates effective skill development across departments.`
+              : topDept && topDept.averageVelocity > avgVelocity + 15
+                ? `${topDept.department} leads with ${topDept.averageVelocity}/100 velocity - replicate their learning practices.`
+                : `Moderate learning velocity at ${avgVelocity}/100 - enhance training programs to accelerate skill acquisition.`;
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-blue-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={learningByDept}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -329,6 +345,19 @@ const LearningVelocityDashboard: React.FC<LearningVelocityDashboardProps> = ({ p
         {/* Velocity Distribution */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Velocity Distribution</h3>
+          {(() => {
+            const highVelocity = velocityDistribution.filter(d => d.label.includes('61') || d.label.includes('81')).reduce((sum, d) => sum + d.count, 0);
+            const total = velocityDistribution.reduce((sum, d) => sum + d.count, 0);
+            const highPercent = total > 0 ? Math.round((highVelocity / total) * 100) : 0;
+            const insight = highPercent >= 25
+              ? `${highPercent}% of employees show high learning velocity (61-100), indicating strong adaptability and growth mindset.`
+              : `Only ${highPercent}% demonstrate high velocity - prioritize learning culture initiatives to boost skill acquisition rates.`;
+            return (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-yellow-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={velocityDistribution}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -344,6 +373,19 @@ const LearningVelocityDashboard: React.FC<LearningVelocityDashboardProps> = ({ p
       {/* Learning vs Adaptability */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Velocity vs Adaptability</h3>
+        {(() => {
+          const highBoth = learningAdaptability.filter(e => e.learning >= 65 && e.adaptability >= 65).length;
+          const total = learningAdaptability.length;
+          const highPercent = total > 0 ? Math.round((highBoth / total) * 100) : 0;
+          const insight = highPercent >= 20
+            ? `${highPercent}% show strong alignment in both metrics, indicating employees ready for rapid role transitions.`
+            : `Limited overlap - only ${highPercent}% excel in both areas, suggesting targeted development needed for balanced growth.`;
+          return (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-indigo-800">{insight}</p>
+            </div>
+          );
+        })()}
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={learningAdaptability}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -359,6 +401,22 @@ const LearningVelocityDashboard: React.FC<LearningVelocityDashboardProps> = ({ p
       {/* Training by Role */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Average Training Completions by Role</h3>
+        {(() => {
+          const avgTrainings = trainingByRole.length > 0
+            ? Math.round(trainingByRole.reduce((sum, r) => sum + r.averageTrainings, 0) / trainingByRole.length)
+            : 0;
+          const topRole = trainingByRole.length > 0 ? trainingByRole[0] : null;
+          const insight = avgTrainings >= 3
+            ? `Active learning culture - average ${avgTrainings} training completions per role shows strong development engagement.`
+            : topRole && topRole.averageTrainings > avgTrainings * 1.5
+              ? `${topRole.role} leads with ${topRole.averageTrainings} completions - leverage as a learning model for other roles.`
+              : `Average ${avgTrainings} completions suggests moderate training participation - increase learning opportunities.`;
+          return (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-purple-800">{insight}</p>
+            </div>
+          );
+        })()}
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={trainingByRole}>
             <CartesianGrid strokeDasharray="3 3" />
