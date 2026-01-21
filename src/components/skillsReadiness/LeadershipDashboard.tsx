@@ -488,6 +488,22 @@ const LeadershipDashboard: React.FC<LeadershipDashboardProps> = ({ profiles, all
         {/* Leadership by Department */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Leadership Potential by Department</h3>
+          {(() => {
+            const avgPotential = leadershipByDept.length > 0
+              ? Math.round(leadershipByDept.reduce((sum, d) => sum + d.averagePotential, 0) / leadershipByDept.length)
+              : 0;
+            const topDept = leadershipByDept.length > 0 ? leadershipByDept[0] : null;
+            const insight = avgPotential >= 65
+              ? `Strong leadership pipeline - average potential of ${avgPotential}/100 indicates robust succession planning foundation.`
+              : topDept && topDept.averagePotential > avgPotential + 10
+                ? `${topDept.department} leads with ${topDept.averagePotential}/100 - leverage as a leadership development model.`
+                : `Moderate leadership potential at ${avgPotential}/100 - invest in leadership development programs to strengthen pipeline.`;
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-blue-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={leadershipByDept}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -503,6 +519,19 @@ const LeadershipDashboard: React.FC<LeadershipDashboardProps> = ({ profiles, all
         {/* Succession Distribution */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Succession Readiness Distribution</h3>
+          {(() => {
+            const readyCount = successionDistribution.filter(d => d.label.includes('61') || d.label.includes('81')).reduce((sum, d) => sum + d.count, 0);
+            const total = successionDistribution.reduce((sum, d) => sum + d.count, 0);
+            const readyPercent = total > 0 ? Math.round((readyCount / total) * 100) : 0;
+            const insight = readyPercent >= 25
+              ? `${readyPercent}% of employees are succession-ready (61-100), indicating strong bench strength for key roles.`
+              : `Only ${readyPercent}% show high succession readiness - accelerate development programs to build leadership bench.`;
+            return (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-green-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={successionDistribution}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -518,6 +547,19 @@ const LeadershipDashboard: React.FC<LeadershipDashboardProps> = ({ profiles, all
       {/* Leadership vs Succession Scatter */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Leadership Potential vs Succession Readiness</h3>
+        {(() => {
+          const highBoth = leadershipScatter.filter(e => e.leadership >= 70 && e.succession >= 70).length;
+          const total = leadershipScatter.length;
+          const highPercent = total > 0 ? Math.round((highBoth / total) * 100) : 0;
+          const insight = highPercent >= 15
+            ? `${highPercent}% of employees show strong alignment in both metrics, indicating well-rounded leadership candidates.`
+            : `Limited overlap - only ${highPercent}% excel in both areas, suggesting need for targeted development in specific competencies.`;
+          return (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-purple-800">{insight}</p>
+            </div>
+          );
+        })()}
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" />

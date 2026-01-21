@@ -330,6 +330,24 @@ const EngagementDashboard: React.FC<EngagementDashboardProps> = ({ profiles, dri
         {/* Engagement by Department */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement vs Flight Risk by Department</h3>
+          {(() => {
+            const avgEngagement = engagementByDept.length > 0
+              ? Math.round(engagementByDept.reduce((sum, d) => sum + d.averageEngagement, 0) / engagementByDept.length)
+              : 0;
+            const avgFlightRisk = engagementByDept.length > 0
+              ? Math.round(engagementByDept.reduce((sum, d) => sum + d.averageFlightRisk, 0) / engagementByDept.length)
+              : 0;
+            const insight = avgEngagement >= 65 && avgFlightRisk <= 35
+              ? `Healthy engagement levels - ${avgEngagement}/100 engagement with ${avgFlightRisk}/100 flight risk indicates stable workforce.`
+              : avgFlightRisk > 50
+                ? `High flight risk at ${avgFlightRisk}/100 requires immediate retention strategies to prevent talent loss.`
+                : `Moderate engagement at ${avgEngagement}/100 - focus on improving employee experience to boost retention.`;
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-blue-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={engagementByDept}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -346,6 +364,19 @@ const EngagementDashboard: React.FC<EngagementDashboardProps> = ({ profiles, dri
         {/* Engagement Distribution */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement Score Distribution</h3>
+          {(() => {
+            const highEngagement = engagementDistribution.filter(d => d.label.includes('61') || d.label.includes('81')).reduce((sum, d) => sum + d.count, 0);
+            const total = engagementDistribution.reduce((sum, d) => sum + d.count, 0);
+            const highPercent = total > 0 ? Math.round((highEngagement / total) * 100) : 0;
+            const insight = highPercent >= 30
+              ? `${highPercent}% of employees show high engagement (61-100), indicating a motivated and committed workforce.`
+              : `Only ${highPercent}% demonstrate high engagement - prioritize employee experience initiatives to improve satisfaction.`;
+            return (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+                <p className="text-xs text-green-800">{insight}</p>
+              </div>
+            );
+          })()}
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={engagementDistribution}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -361,6 +392,23 @@ const EngagementDashboard: React.FC<EngagementDashboardProps> = ({ profiles, dri
       {/* Engagement vs Flight Risk */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement vs Flight Risk</h3>
+        {(() => {
+          const atRisk = engagementRisk.filter(e => e.engagement < 50 && e.flightRisk > 50).length;
+          const champions = engagementRisk.filter(e => e.engagement >= 70 && e.flightRisk <= 30).length;
+          const total = engagementRisk.length;
+          const riskPercent = total > 0 ? Math.round((atRisk / total) * 100) : 0;
+          const championPercent = total > 0 ? Math.round((champions / total) * 100) : 0;
+          const insight = riskPercent > 15
+            ? `${riskPercent}% are at high risk (low engagement, high flight risk) - immediate intervention needed to prevent turnover.`
+            : championPercent >= 20
+              ? `${championPercent}% are engagement champions (high engagement, low risk) - leverage as change agents and mentors.`
+              : `Balanced distribution - monitor engagement trends to proactively address potential retention issues.`;
+          return (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2 mb-3">
+              <p className="text-xs text-red-800">{insight}</p>
+            </div>
+          );
+        })()}
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" />
